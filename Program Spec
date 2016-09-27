@@ -1,0 +1,126 @@
+(40) Write a "string rewriting" filter
+
+     Subst16 [FROM TO -FLAGS]*
+
+that reads lines from the standard input, performs the requested substitutions
+(if any), and writes the (possibly) modified lines to the standard output.
+
+NOTE:  Brackets in the command line are used to delimit optional arguments, so
+[FROM TO -FLAGS]* denotes zero or more triples (FROM, TO, -FLAGS).
+
+Lines are processed one at a time.  Each triple (FROM, TO, -FLAGS) specifies a
+string substitution rule.  FROM is the string to replace; TO is the replacement
+string (note that TO may be longer than, shorter than, or exactly the same
+length as FROM); and FLAGS is a concatenation of one or more strings that
+specify how the rule is applied (q, g, and r) and the next rule to apply (see
+the descriptions of Sn and Fm below):
+
+  When the q flag (Quit) is specified, only the leftmost occurrence (if any) of
+  the string FROM in the line is replaced by the string TO.
+
+  When the g flag (Global) is specified, every occurrence of FROM in the line
+  is replaced by TO.  That is, the leftmost occurrence (if any) of FROM is
+  replaced by TO; and, after each substitution, the modified line is scanned
+  beginning with the first character _following_ the replacement string for the
+  leftmost occurrence of FROM, which is then replaced by TO.
+
+  When the r flag (Rescan) is specified, the leftmost occurrence (if any) of
+  FROM is replaced by TO; and, after each substitution, the modified line is
+  scanned beginning with the first character _in_the_replacement_string_ for
+  the leftmost occurrence of FROM, which is then replaced by TO.
+
+  If more than one of q, g, or r is specified, then the last is used.  If none
+  is specified, then q is used.
+
+  Examples:
+
+    Command             Input     Intermediate stages    Output
+
+    Subst16 ab ba -q    "aabbab"                         "ababab"
+                          ^^
+
+    Subst16 ab ba -g    "aabbab"  "ababab"               "ababba"
+                          ^^           ^^
+
+    Subst16 ab ba -r    "aabbab"  "ababab", "abbaab"     "abbaba"
+                          ^^         ^^          ^^
+
+    Subst16 ab ba -     "aabbab"                         "ababab"
+                          ^^
+
+    Subst16 ab ba -rqg  "aabbab"  "ababab"               "ababba"
+                          ^^           ^^
+
+Once the application of a single string substitution rule is complete, it is
+said to be successful if it caused at least one replacement, and unsuccessful
+otherwise.
+
+String substitution rules are normally applied in left to right order, with the
+following constraints:
+
+  When the Sn (success) flag is specified (where n denotes a sequence of zero
+  or more digits) and the application of the rule is successful, the next rule
+  applied is the n-th rule (the leftmost rule on the command line is the 0-th).
+
+  When the Fm (failure) flag is specified (where m denotes a sequence of zero
+  or more digits) and the application of the rule is unsuccessful, the next
+  rule applied is the m-th rule.
+
+  If n (or m) is omitted, then its value is 0.  Thus S is equivalent to S0.
+
+  If n or m is greater than the index of the rightmost rule, then no further
+  substitutions are applied to the current line.  If more than one Sn (Fm) is
+  specified, then the last is used.  If none is specified, then the next rule
+  in sequence (if any) is applied.
+
+  Examples:
+
+    Command                        Input      Intermediate stages        Output
+
+    Subst16 aa a -S2 abb aab -S0  "aaabbb"                              "aabbb"
+                                   ^^
+
+    Subst16 aa a -S1 abb aab -S2  "aaabbb"   "aabbb"                    "aaabb"
+                                   ^^          ^^^
+
+    Subst16 aa a -S1 abb aab -S1  "aaabbb"   "aabbb", "aaabb"           "aaaab"
+                                   ^^          ^^^       ^^^
+
+    Subst16 aa a -S0 abb aab -    "aaabbb"   "aabbb", "abbb"            "aabb"
+                                   ^^         ^^       ^^^
+
+    Subst16 aa a -S0 abb aab -S1  "aaabbb"   "aabbb", "abbb", "aabb"    "aaab"
+                                   ^^         ^^       ^^^      ^^^
+
+    Subst16 aa a -   abb aab -S0  "aaabbb"   "aabbb", "aaabb", "aabb",
+                                   ^^          ^^^     ^^        ^^^
+                                             "aaab"                     "aab"
+                                              ^^
+
+    Subst16 aa a -   abb aab -    "aaabbb"   "aabbb"                    "aaabb"
+                                   ^^          ^^^
+
+    Subst16 aa a -F2 abb aab -S1  "abbb"                                "abbb"
+
+
+    Subst16 aa a -S2 abb aab -S0  "abbb"     "aabb"                     "abb"
+                                   ^^^        ^^
+
+    Subst16 bd a -S2  aa a - ..   "aabbbc"   "abbbc", "aabbc", "abbc",
+       abb aab -S1  c d -S         ^^         ^^^      ^^       ^^^
+                                             "aabc", "abc", "abd"       "aa"
+                                              ^^        ^     ^^
+
+The flags q, g, r, Sn, and Fm may appear in any combination and in any order
+within a given FLAGS field.  Thus -gS2F3, -S2gF3, and -F3S2g are all valid.
+
+To make Subst16 more useful, the FROM field can contain the wildcard character
+. (period), which matches any character other than a newline.  To specify a
+real period, use the escape sequence "@." (an @ can be specified as "@@" when
+necessary, but an @ does not escape any other characters).
+
+Also, the TO field can contain the insert-matched-string character ^ (caret),
+which is replaced by the substring of the line that matched the FROM field.  To
+specify a real ^, use the escape sequence "@^" (an @ can be specified as "@@"
+when necessary, but an @ does not escape any other characters).
+Contact GitHub API Training Shop Blog About
